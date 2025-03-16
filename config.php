@@ -2,7 +2,7 @@
 // تنظیمات پایگاه‌داده
 $host = "localhost";
 $username = "root";
-$password = "naseh42";
+$password = "";
 $dbname = "vpn_users";
 
 $conn = new mysqli($host, $username, $password, $dbname);
