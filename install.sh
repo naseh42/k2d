@@ -1,27 +1,27 @@
 #!/bin/bash
 
-# به‌روزرسانی پکیج‌ها و نصب پیش‌نیازها
 echo "Updating system and installing dependencies..."
 sudo apt-get update && sudo apt-get install -y \
     python3 \
     python3-pip \
+    python3-venv \
     curl \
     unzip \
     iputils-ping \
-    docker.io \
-    docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
-# نصب FastAPI و uvicorn
-echo "Installing FastAPI and uvicorn..."
-pip3 install fastapi uvicorn
+echo "Creating Python virtual environment..."
+python3 -m venv /root/venv
+source /root/venv/bin/activate
 
-# دانلود و نصب XRay-core
+echo "Installing FastAPI and uvicorn..."
+pip install --upgrade pip
+pip install fastapi uvicorn
+
 echo "Downloading and installing XRay-core..."
 curl -L -o /usr/local/bin/xray https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64
 chmod +x /usr/local/bin/xray
 
-# ایجاد فایل پیکربندی XRay
 echo "Creating XRay config.json..."
 cat <<EOL > /root/config.json
 {
@@ -60,34 +60,6 @@ cat <<EOL > /root/config.json
           "path": "/ws"
         }
       }
-    },
-    {
-      "port": 10443,
-      "protocol": "hysteria",
-      "settings": {
-        "clients": [
-          {
-            "id": "your-uuid-here"
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "udp"
-      }
-    },
-    {
-      "port": 10555,
-      "protocol": "xtcp",
-      "settings": {
-        "clients": [
-          {
-            "id": "your-uuid-here"
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "tcp"
-      }
     }
   ],
   "outbounds": [
@@ -98,42 +70,28 @@ cat <<EOL > /root/config.json
 }
 EOL
 
-# ایجاد فایل اصلی FastAPI (main.py)
 echo "Creating FastAPI main.py..."
 cat <<EOL > /root/main.py
 from fastapi import FastAPI
-from pydantic import BaseModel
 import json
+
 app = FastAPI()
 
-class Config(BaseModel):
-    id: str
-    protocol: str
-    port: int
-    settings: dict
-    streamSettings: dict
+@app.get("/")
+def read_root():
+    return {"message": "Kurdan Panel is running"}
 
 @app.post("/update_config/")
-async def update_config(config: Config):
-    config_dict = json.loads(config.json())
-    with open("/root/config.json", "r+") as f:
-        data = json.load(f)
-        for inbound in data['inbounds']:
-            if inbound['protocol'] == config_dict['protocol'] and inbound['port'] == config_dict['port']:
-                inbound.update(config_dict)
-                f.seek(0)
-                json.dump(data, f, indent=4)
-                return {"message": f"Config updated for {config_dict['protocol']} on port {config_dict['port']}"}
-    return {"message": "Config not found"}
+def update_config(config: dict):
+    with open("/root/config.json", "w") as f:
+        json.dump(config, f, indent=4)
+    return {"message": "Config updated"}
 EOL
 
-# ساخت Docker image و اجرای آن
-echo "Building Docker image..."
-docker build -t kurdan-panel /root
+echo "Starting FastAPI service..."
+nohup /root/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 > /root/panel.log 2>&1 &
 
-# اجرای Docker container
-echo "Running Docker container..."
-docker run -d -p 8000:8000 -p 443:443 -p 1080:1080 kurdan-panel
+echo "Starting XRay..."
+nohup /usr/local/bin/xray -config /root/config.json > /root/xray.log 2>&1 &
 
-# موفقیت نصب
 echo "Installation complete! The panel is running at http://your-server-ip:8000"
