@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# به‌روزرسانی پکیج‌ها و نصب پیش‌نیازها
+# به‌روزرسانی سیستم و نصب پیش‌نیازها
 echo "Updating system and installing dependencies..."
 sudo apt-get update && sudo apt-get install -y \
     python3 \
@@ -12,7 +12,10 @@ sudo apt-get update && sudo apt-get install -y \
     docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
-# نصب FastAPI و uvicorn
+# ساخت دایرکتوری پروژه
+mkdir -p /root/k2d && cd /root/k2d
+
+# دانلود و نصب FastAPI
 echo "Installing FastAPI and uvicorn..."
 pip3 install fastapi uvicorn
 
@@ -23,7 +26,7 @@ chmod +x /usr/local/bin/xray
 
 # ایجاد فایل پیکربندی XRay
 echo "Creating XRay config.json..."
-cat <<EOL > /root/config.json
+cat <<EOL > /root/k2d/config.json
 {
   "inbounds": [
     {
@@ -60,34 +63,6 @@ cat <<EOL > /root/config.json
           "path": "/ws"
         }
       }
-    },
-    {
-      "port": 10443,
-      "protocol": "hysteria",
-      "settings": {
-        "clients": [
-          {
-            "id": "your-uuid-here"
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "udp"
-      }
-    },
-    {
-      "port": 10555,
-      "protocol": "xtcp",
-      "settings": {
-        "clients": [
-          {
-            "id": "your-uuid-here"
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "tcp"
-      }
     }
   ],
   "outbounds": [
@@ -100,7 +75,7 @@ EOL
 
 # ایجاد فایل اصلی FastAPI (main.py)
 echo "Creating FastAPI main.py..."
-cat <<EOL > /root/main.py
+cat <<EOL > /root/k2d/main.py
 from fastapi import FastAPI
 from pydantic import BaseModel
 import json
@@ -117,8 +92,7 @@ class Config(BaseModel):
 @app.post("/update_config/")
 async def update_config(config: Config):
     config_dict = json.loads(config.json())
-    
-    with open("/root/config.json", "r+") as f:
+    with open("/root/k2d/config.json", "r+") as f:
         data = json.load(f)
         for inbound in data['inbounds']:
             if inbound['protocol'] == config_dict['protocol'] and inbound['port'] == config_dict['port']:
@@ -131,22 +105,26 @@ EOL
 
 # ایجاد Dockerfile
 echo "Creating Dockerfile..."
-cat <<EOL > /root/Dockerfile
+cat <<EOL > /root/k2d/Dockerfile
 FROM ubuntu:latest
 
 RUN apt-get update && apt-get install -y python3 python3-pip curl unzip iputils-ping && rm -rf /var/lib/apt/lists/*
 RUN pip3 install fastapi uvicorn
 RUN curl -L -o /usr/local/bin/xray https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64
 RUN chmod +x /usr/local/bin/xray
-COPY config.json /root/config.json
-CMD ["xray", "-config", "/root/config.json"]
+
+COPY config.json /root/k2d/config.json
+COPY main.py /root/k2d/main.py
+
+WORKDIR /root/k2d
 EXPOSE 80 443 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+CMD bash -c "/usr/local/bin/xray -config /root/k2d/config.json & uvicorn main:app --host 0.0.0.0 --port 8000"
 EOL
 
 # ساخت Docker image
 echo "Building Docker image..."
-docker build -t kurdan-panel /root
+docker build -t kurdan-panel /root/k2d
 
 # اجرای Docker container
 echo "Running Docker container..."
