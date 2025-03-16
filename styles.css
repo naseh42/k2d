@@ -1,39 +1,51 @@
-/* تنظیمات کلی برای بدنه صفحه */
+/* استایل‌های کلی */
 body {
-    font-family: Tahoma, sans-serif; /* فونت استاندارد برای فارسی */
-    direction: rtl; /* راست‌چین کردن متن */
-    background-color: #f9f9f9; /* رنگ پس‌زمینه ملایم */
+    font-family: 'Iran Sans', Tahoma, sans-serif;
+    background-color: #f4f4f4;
     margin: 0;
     padding: 0;
+    direction: rtl;
+    color: #333;
     line-height: 1.6;
 }
 
-/* استایل برای هدر */
+/* هدر */
 header {
     background-color: #4CAF50;
     color: white;
-    padding: 15px;
     text-align: center;
-    border-bottom: 3px solid #3a9c40;
+    padding: 20px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+}
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+header p {
+    font-size: 1rem;
 }
 
 /* محتوای اصلی */
 main {
-    margin: 20px auto;
     max-width: 800px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* بخش‌های جداگانه */
+/* بخش‌ها */
 section {
     margin-bottom: 20px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #fff;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
-
-/* استایل برای فرم‌ها */
+section h2 {
+    font-size: 1.5rem;
+    color: #4CAF50;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 5px;
+}
 form label {
     display: block;
     margin: 10px 0 5px;
@@ -41,42 +53,26 @@ form label {
 }
 form input {
     width: calc(100% - 20px);
-    padding: 8px;
-    margin-bottom: 10px;
+    padding: 10px;
+    margin-bottom: 15px;
     border: 1px solid #ccc;
     border-radius: 5px;
     box-sizing: border-box;
 }
 form button {
-    padding: 10px 15px;
+    padding: 10px 20px;
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 1rem;
 }
 form button:hover {
     background-color: #45a049;
 }
 
-/* جدول‌ها */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-table, th, td {
-    border: 1px solid #ddd;
-    text-align: center;
-    padding: 8px;
-}
-th {
-    background-color: #f2f2f2;
-    font-weight: bold;
-}
-
-/* استایل برای فوتر */
+/* فوتر */
 footer {
     text-align: center;
     margin-top: 20px;
