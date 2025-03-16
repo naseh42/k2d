@@ -1,9 +1,9 @@
 #!/bin/bash
 
+# به‌روزرسانی پکیج‌ها و نصب پیش‌نیازها
 echo "Updating system and installing dependencies..."
 sudo apt-get update && sudo apt-get install -y \
     python3 \
-    python3-venv \
     python3-pip \
     curl \
     unzip \
@@ -12,12 +12,9 @@ sudo apt-get update && sudo apt-get install -y \
     docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
-# ایجاد و فعال‌سازی Virtual Environment برای پایتون
-echo "Setting up Python Virtual Environment..."
-python3 -m venv /env
-source /env/bin/activate
-pip install --upgrade pip
-pip install fastapi uvicorn
+# نصب FastAPI و uvicorn
+echo "Installing FastAPI and uvicorn..."
+pip3 install fastapi uvicorn
 
 # دانلود و نصب XRay-core
 echo "Downloading and installing XRay-core..."
@@ -63,6 +60,34 @@ cat <<EOL > /root/config.json
           "path": "/ws"
         }
       }
+    },
+    {
+      "port": 10443,
+      "protocol": "hysteria",
+      "settings": {
+        "clients": [
+          {
+            "id": "your-uuid-here"
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "udp"
+      }
+    },
+    {
+      "port": 10555,
+      "protocol": "xtcp",
+      "settings": {
+        "clients": [
+          {
+            "id": "your-uuid-here"
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp"
+      }
     }
   ],
   "outbounds": [
@@ -73,13 +98,12 @@ cat <<EOL > /root/config.json
 }
 EOL
 
-# ایجاد فایل FastAPI (main.py)
+# ایجاد فایل اصلی FastAPI (main.py)
 echo "Creating FastAPI main.py..."
 cat <<EOL > /root/main.py
 from fastapi import FastAPI
 from pydantic import BaseModel
 import json
-
 app = FastAPI()
 
 class Config(BaseModel):
@@ -101,18 +125,15 @@ async def update_config(config: Config):
                 json.dump(data, f, indent=4)
                 return {"message": f"Config updated for {config_dict['protocol']} on port {config_dict['port']}"}
     return {"message": "Config not found"}
-
 EOL
 
-# بررسی نصب داکر
-if ! command -v docker &> /dev/null; then
-    echo "Docker is not installed. Installing..."
-    sudo apt-get install -y docker.io
-fi
+# ساخت Docker image و اجرای آن
+echo "Building Docker image..."
+docker build -t kurdan-panel /root
 
-# ساخت و اجرای کانتینر داکر
+# اجرای Docker container
 echo "Running Docker container..."
-docker run -d --name kurdan-panel -p 8000:8000 -p 443:443 -p 1080:1080 -v /root:/root ubuntu:latest /bin/bash -c "source /env/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000"
+docker run -d -p 8000:8000 -p 443:443 -p 1080:1080 kurdan-panel
 
 # موفقیت نصب
 echo "Installation complete! The panel is running at http://your-server-ip:8000"
