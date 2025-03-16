@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# به‌روزرسانی سیستم و نصب پیش‌نیازها
 echo "Updating system and installing dependencies..."
 sudo apt-get update && sudo apt-get install -y \
     python3 \
+    python3-venv \
     python3-pip \
     curl \
     unzip \
@@ -12,12 +12,12 @@ sudo apt-get update && sudo apt-get install -y \
     docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
-# ساخت دایرکتوری پروژه
-mkdir -p /root/k2d && cd /root/k2d
-
-# دانلود و نصب FastAPI
-echo "Installing FastAPI and uvicorn..."
-pip3 install fastapi uvicorn
+# ایجاد و فعال‌سازی Virtual Environment برای پایتون
+echo "Setting up Python Virtual Environment..."
+python3 -m venv /env
+source /env/bin/activate
+pip install --upgrade pip
+pip install fastapi uvicorn
 
 # دانلود و نصب XRay-core
 echo "Downloading and installing XRay-core..."
@@ -26,7 +26,7 @@ chmod +x /usr/local/bin/xray
 
 # ایجاد فایل پیکربندی XRay
 echo "Creating XRay config.json..."
-cat <<EOL > /root/k2d/config.json
+cat <<EOL > /root/config.json
 {
   "inbounds": [
     {
@@ -73,9 +73,9 @@ cat <<EOL > /root/k2d/config.json
 }
 EOL
 
-# ایجاد فایل اصلی FastAPI (main.py)
+# ایجاد فایل FastAPI (main.py)
 echo "Creating FastAPI main.py..."
-cat <<EOL > /root/k2d/main.py
+cat <<EOL > /root/main.py
 from fastapi import FastAPI
 from pydantic import BaseModel
 import json
@@ -92,7 +92,7 @@ class Config(BaseModel):
 @app.post("/update_config/")
 async def update_config(config: Config):
     config_dict = json.loads(config.json())
-    with open("/root/k2d/config.json", "r+") as f:
+    with open("/root/config.json", "r+") as f:
         data = json.load(f)
         for inbound in data['inbounds']:
             if inbound['protocol'] == config_dict['protocol'] and inbound['port'] == config_dict['port']:
@@ -101,34 +101,18 @@ async def update_config(config: Config):
                 json.dump(data, f, indent=4)
                 return {"message": f"Config updated for {config_dict['protocol']} on port {config_dict['port']}"}
     return {"message": "Config not found"}
+
 EOL
 
-# ایجاد Dockerfile
-echo "Creating Dockerfile..."
-cat <<EOL > /root/k2d/Dockerfile
-FROM ubuntu:latest
+# بررسی نصب داکر
+if ! command -v docker &> /dev/null; then
+    echo "Docker is not installed. Installing..."
+    sudo apt-get install -y docker.io
+fi
 
-RUN apt-get update && apt-get install -y python3 python3-pip curl unzip iputils-ping && rm -rf /var/lib/apt/lists/*
-RUN pip3 install fastapi uvicorn
-RUN curl -L -o /usr/local/bin/xray https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64
-RUN chmod +x /usr/local/bin/xray
-
-COPY config.json /root/k2d/config.json
-COPY main.py /root/k2d/main.py
-
-WORKDIR /root/k2d
-EXPOSE 80 443 8000
-
-CMD bash -c "/usr/local/bin/xray -config /root/k2d/config.json & uvicorn main:app --host 0.0.0.0 --port 8000"
-EOL
-
-# ساخت Docker image
-echo "Building Docker image..."
-docker build -t kurdan-panel /root/k2d
-
-# اجرای Docker container
+# ساخت و اجرای کانتینر داکر
 echo "Running Docker container..."
-docker run -d -p 8000:8000 -p 443:443 -p 1080:1080 kurdan-panel
+docker run -d --name kurdan-panel -p 8000:8000 -p 443:443 -p 1080:1080 -v /root:/root ubuntu:latest /bin/bash -c "source /env/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000"
 
 # موفقیت نصب
 echo "Installation complete! The panel is running at http://your-server-ip:8000"
