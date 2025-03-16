@@ -16,6 +16,8 @@ source /root/venv/bin/activate
 
 echo "Installing FastAPI and uvicorn..."
 pip install --upgrade pip
+python3 -m venv venv
+source venv/bin/activate
 pip install fastapi uvicorn
 
 echo "Downloading and installing XRay-core..."
