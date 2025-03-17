@@ -14,8 +14,9 @@ if ($conn->connect_error) {
 
 // بررسی ارسال فرم
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST['username'];
-    $uuid = $_POST['uuid'];
+    // دریافت و پاکسازی داده‌ها
+    $username = mysqli_real_escape_string($conn, $_POST['username']);
+    $uuid = mysqli_real_escape_string($conn, $_POST['uuid']);
     $expire_date = date('Y-m-d', strtotime("+30 days")); // تاریخ انقضا بعد از 30 روز
     $volume = 50 * 1024 * 1024 * 1024; // حجم 50 گیگابایت به بایت
     $protocols = isset($_POST['protocols']) ? implode(',', $_POST['protocols']) : '';
@@ -91,7 +92,9 @@ $conn->close();
         if ($result->num_rows > 0) {
             echo "<table><tr><th>نام کاربری</th><th>UUID</th><th>تاریخ انقضا</th><th>حجم</th><th>پروتکل‌ها</th><th>عملیات</th></tr>";
             while($row = $result->fetch_assoc()) {
-                echo "<tr><td>" . $row['username'] . "</td><td>" . $row['uuid'] . "</td><td>" . $row['expire_date'] . "</td><td>" . number_format($row['volume'] / (1024 * 1024 * 1024), 2) . " GB</td><td>" . $row['protocols'] . "</td><td><a href='delete.php?id=" . $row['id'] . "&uuid=" . $row['uuid'] . "'>حذف</a></td></tr>";
+                // تبدیل حجم از بایت به گیگابایت
+                $volume_in_gb = number_format($row['volume'] / (1024 * 1024 * 1024), 2);
+                echo "<tr><td>" . $row['username'] . "</td><td>" . $row['uuid'] . "</td><td>" . $row['expire_date'] . "</td><td>" . $volume_in_gb . " GB</td><td>" . $row['protocols'] . "</td><td><a href='delete.php?id=" . $row['id'] . "&uuid=" . $row['uuid'] . "'>حذف</a></td></tr>";
             }
             echo "</table>";
         } else {
