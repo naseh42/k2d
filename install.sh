@@ -1,15 +1,17 @@
 #!/bin/bash
 
+# نصب بسته‌ها
 echo "شروع نصب بسته‌های مورد نیاز..."
 sudo apt update
 sudo apt install -y apache2 mysql-server php libapache2-mod-php php-mysql \
 certbot python3-certbot-apache dnscrypt-proxy shadowsocks-libev \
 openvpn easy-rsa wireguard jq wget
 
-# نصب و پیکربندی Xray Core
+# نصب Xray Core
 echo "نصب Xray Core..."
 bash <(curl -L -s https://raw.githubusercontent.com/XTLS/Xray-install/main/install-release.sh)
 
+# پیکربندی اولیه Xray Core
 echo "پیکربندی اولیه Xray Core..."
 sudo bash -c 'cat << EOF > /usr/local/etc/xray/config.json
 {
@@ -44,13 +46,14 @@ sudo bash -c 'cat << EOF > /usr/local/etc/xray/config.json
 EOF'
 sudo systemctl restart xray
 
-# دانلود، نصب و تنظیم Sing-box
+# نصب Sing-box
 echo "دانلود و نصب Sing-box..."
 wget https://github.com/SagerNet/sing-box/releases/download/v1.11.5/sing-box-linux-amd64.tar.gz
 tar -xvzf sing-box-linux-amd64.tar.gz
 sudo mv sing-box /usr/local/bin/
 sudo chmod +x /usr/local/bin/sing-box
 
+# ایجاد فایل سرویس و کانفیگ برای Sing-box
 echo "ایجاد فایل سرویس و کانفیگ برای Sing-box..."
 sudo mkdir -p /etc/sing-box
 sudo bash -c 'cat << EOF > /etc/sing-box/config.json
@@ -107,6 +110,14 @@ EOF'
 sudo ocpasswd -c /etc/ocserv/ocpasswd username
 sudo systemctl enable ocserv
 sudo systemctl restart ocserv
+
+# گرفتن پسورد برای MySQL از کاربر
+echo "لطفا پسورد MySQL را وارد کنید:"
+read -s mysql_password
+
+# به‌روزرسانی فایل config.php
+echo "در حال به‌روزرسانی فایل config.php..."
+sudo sed -i "s/\$password = \".*\";/\$password = \"$mysql_password\";/g" /var/www/html/config.php
 
 # بررسی وضعیت سرویس‌ها
 echo "بررسی وضعیت سرویس‌ها..."
