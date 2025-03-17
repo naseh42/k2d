@@ -1,11 +1,10 @@
 <?php
-// تنظیمات پایگاه‌داده
-$host = "localhost";
+$servername = "localhost";
 $username = "root";
 $password = "";
 $dbname = "vpn_users";
 
-$conn = new mysqli($host, $username, $password, $dbname);
+$conn = new mysqli($servername, $username, $password, $dbname);
 
 if ($conn->connect_error) {
     die("خطای اتصال به پایگاه‌داده: " . $conn->connect_error);
