@@ -1,35 +1,57 @@
 <?php
-include('config.php');
+$servername = "localhost"; // نام سرور پایگاه داده
+$username = "root"; // نام کاربری پایگاه داده
+$password = ""; // پسورد پایگاه داده
+$dbname = "vpn_users"; // نام پایگاه داده
 
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if (\$conn->connect_error) {
-    die("خطا در اتصال به دیتابیس: " . \$conn->connect_error);
+// ایجاد اتصال به پایگاه داده
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+// بررسی اتصال
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 
-if (isset(\$_GET['id'])) {
-    \$id = intval(\$_GET['id']);
-    \$stmt = \$conn->prepare("SELECT * FROM users WHERE id = ?");
-    \$stmt->bind_param("i", \$id);
-    \$stmt->execute();
-    \$result = \$stmt->get_result();
-    \$user = \$result->fetch_assoc();
+// بررسی پارامترهای ورودی
+if (isset($_GET['id']) && isset($_GET['uuid'])) {
+    $id = $_GET['id'];
+    $uuid = $_GET['uuid'];
+
+    // دریافت اطلاعات کاربر از دیتابیس
+    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ? AND uuid = ?");
+    $stmt->bind_param("is", $id, $uuid);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+
+    if (!$user) {
+        echo "کاربری با این مشخصات یافت نشد.";
+        exit;
+    }
+
+    // ویرایش داده‌ها پس از ارسال فرم
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        $username = $_POST['username'];
+        $uuid = $_POST['uuid'];
+        $protocols = isset($_POST['protocols']) ? implode(',', $_POST['protocols']) : '';
+
+        $stmt = $conn->prepare("UPDATE users SET username = ?, uuid = ?, protocols = ? WHERE id = ?");
+        $stmt->bind_param("sssi", $username, $uuid, $protocols, $id);
+
+        if ($stmt->execute()) {
+            echo "اطلاعات کاربر با موفقیت به روز رسانی شد.";
+            echo "<br><a href='index.php'>بازگشت به صفحه اصلی</a>";
+        } else {
+            echo "خطا در به روز رسانی اطلاعات: " . $stmt->error;
+        }
+
+        $stmt->close();
+    }
 } else {
-    die("خطای دریافت اطلاعات کاربر");
+    echo "اطلاعات کافی برای ویرایش کاربر موجود نیست.";
 }
 
-if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
-    \$username = \$_POST['username'];
-    \$expire_date = \$_POST['expire_date'];
-    \$volume = \$_POST['volume'] * 1024 * 1024 * 1024;
-    \$protocols = implode(',', \$_POST['protocols']);
-
-    \$stmt = \$conn->prepare("UPDATE users SET username=?, expire_date=?, volume=?, protocols=? WHERE id=?");
-    \$stmt->bind_param("ssisi", \$username, \$expire_date, \$volume, \$protocols, \$id);
-    \$stmt->execute();
-
-    echo "<p>اطلاعات کاربر بروزرسانی شد.</p>";
-    header("Refresh:2; url=index.php");
-}
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -38,18 +60,35 @@ if (\$_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ویرایش کاربر</title>
+    <style>
+        body { font-family: Arial, sans-serif; direction: rtl; }
+        .container { padding: 30px; width: 80%; margin: 20px auto; background-color: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        label { display: block; margin: 10px 0 5px; }
+        input[type="text"], select { width: 100%; padding: 8px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
+        input[type="submit"] { background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        input[type="submit"]:hover { background-color: #45a049; }
+    </style>
 </head>
 <body>
-    <h1>ویرایش کاربر</h1>
-    <form method="POST">
-        <input type="text" name="username" value="<?= \$user['username'] ?>" required>
-        <input type="date" name="expire_date" value="<?= \$user['expire_date'] ?>" required>
-        <input type="number" name="volume" value="<?= round(\$user['volume'] / (1024*1024*1024), 2) ?>" required> GB
-        <label><input type="checkbox" name="protocols[]" value="vless" <?= strpos(\$user['protocols'], 'vless') !== false ? 'checked' : '' ?>> VLESS</label>
-        <label><input type="checkbox" name="protocols[]" value="vmess" <?= strpos(\$user['protocols'], 'vmess') !== false ? 'checked' : '' ?>> VMess</label>
-        <label><input type="checkbox" name="protocols[]" value="trojan" <?= strpos(\$user['protocols'], 'trojan') !== false ? 'checked' : '' ?>> Trojan</label>
-        <label><input type="checkbox" name="protocols[]" value="hysteria" <?= strpos(\$user['protocols'], 'hysteria') !== false ? 'checked' : '' ?>> Hysteria</label>
-        <button type="submit">بروزرسانی</button>
-    </form>
+    <div class="container">
+        <h2>ویرایش کاربر: <?php echo $user['username']; ?></h2>
+        <form method="POST" action="">
+            <label for="username">نام کاربری</label>
+            <input type="text" id="username" name="username" value="<?php echo $user['username']; ?>" required>
+
+            <label for="uuid">UUID</label>
+            <input type="text" id="uuid" name="uuid" value="<?php echo $user['uuid']; ?>" required>
+
+            <label for="protocols">پروتکل‌ها</label>
+            <select id="protocols" name="protocols[]" multiple>
+                <option value="VLESS" <?php echo in_array('VLESS', explode(',', $user['protocols'])) ? 'selected' : ''; ?>>VLESS</option>
+                <option value="VMess" <?php echo in_array('VMess', explode(',', $user['protocols'])) ? 'selected' : ''; ?>>VMess</option>
+                <option value="Trojan" <?php echo in_array('Trojan', explode(',', $user['protocols'])) ? 'selected' : ''; ?>>Trojan</option>
+                <option value="Hysteria" <?php echo in_array('Hysteria', explode(',', $user['protocols'])) ? 'selected' : ''; ?>>Hysteria</option>
+            </select>
+
+            <input type="submit" value="بروزرسانی اطلاعات">
+        </form>
+    </div>
 </body>
 </html>
