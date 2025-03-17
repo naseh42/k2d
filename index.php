@@ -1,5 +1,4 @@
 <?php
-// نمایش خطاها برای اشکال‌زدایی
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -38,12 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
     $username = trim($_POST['username']);
     $uuid = trim($_POST['uuid']);
     $expire_date = date('Y-m-d', strtotime("+30 days"));
-    $volume = (float) 50 * 1024 * 1024 * 1024; // 50GB
+    $volume = 50 * 1024 * 1024 * 1024; // 50GB
 
     $protocols = isset($_POST['protocols']) ? implode(',', $_POST['protocols']) : '';
 
     // ذخیره در دیتابیس
     $stmt = $conn->prepare("INSERT INTO users (username, uuid, expire_date, volume, protocols) VALUES (?, ?, ?, ?, ?)");
+    if (!$stmt) {
+        die("خطا در آماده‌سازی کوئری: " . $conn->error);
+    }
     $stmt->bind_param("sssis", $username, $uuid, $expire_date, $volume, $protocols);
 
     if ($stmt->execute()) {
@@ -51,11 +53,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
     } else {
         echo "<p>خطا در اضافه کردن کاربر: " . $stmt->error . "</p>";
     }
+
     $stmt->close();
 }
 
 // دریافت لیست کاربران
 $result = $conn->query("SELECT * FROM users");
+if (!$result) {
+    die("خطا در اجرای کوئری: " . $conn->error);
+}
 ?>
 
 <!DOCTYPE html>
@@ -133,11 +139,11 @@ $result = $conn->query("SELECT * FROM users");
         </tr>
         <?php while ($row = $result->fetch_assoc()): ?>
             <tr>
-                <td><?= $row['username'] ?></td>
-                <td><?= $row['uuid'] ?></td>
-                <td><?= $row['protocols'] ?></td>
+                <td><?= htmlspecialchars($row['username']) ?></td>
+                <td><?= htmlspecialchars($row['uuid']) ?></td>
+                <td><?= htmlspecialchars($row['protocols']) ?></td>
                 <td><?= round($row['volume'] / (1024*1024*1024), 2) ?> GB</td>
-                <td><?= $row['expire_date'] ?></td>
+                <td><?= htmlspecialchars($row['expire_date']) ?></td>
                 <td>
                     <a href="delete.php?id=<?= $row['id'] ?>&uuid=<?= $row['uuid'] ?>">حذف</a>
                 </td>
