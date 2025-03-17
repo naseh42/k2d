@@ -6,7 +6,10 @@ CREATE TABLE users (
     username VARCHAR(50),
     password VARCHAR(255),
     bandwidth_limit BIGINT,
-    time_limit DATETIME
+    time_limit DATETIME,
+    max_connections INT DEFAULT 1,
+    data_usage BIGINT DEFAULT 0,
+    v2ray_uuid VARCHAR(36)
 );
 
 CREATE TABLE servers (
